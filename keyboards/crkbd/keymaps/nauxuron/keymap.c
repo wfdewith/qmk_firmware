@@ -35,6 +35,7 @@ enum crkbd_keycodes {
   QWERTY = SAFE_RANGE,
   COLEMAK,
   VOMIT,
+  M_JIGL,
 };
 
 #define LOWER MO(_LOWER)
@@ -58,7 +59,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 ),
 
 [_LOWER] = LAYOUT_split_3x6_3(
-  XXXXXXX, XXXXXXX, XXXXXXX, KC_LBRC, KC_RBRC, KC_BSLS,                      KC_PIPE, KC_LCBR, KC_RCBR, XXXXXXX, XXXXXXX, XXXXXXX,
+  M_JIGL,  XXXXXXX, XXXXXXX, KC_LBRC, KC_RBRC, KC_BSLS,                      KC_PIPE, KC_LCBR, KC_RCBR, XXXXXXX, XXXXXXX, XXXXXXX,
   _______, KC_EXLM, KC_AT,   KC_HASH, KC_DLR,  KC_PERC,                      KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, XXXXXXX,
   _______, XXXXXXX, XXXXXXX, KC_TILD, KC_MINS, KC_UNDS,                      KC_PLUS, KC_EQL,  KC_GRV,  XXXXXXX, XXXXXXX, XXXXXXX,
                                       _______, _______, XXXXXXX,    XXXXXXX, _______, _______
@@ -80,6 +81,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 };
 
+static bool is_mouse_jiggle_active = false;
+static bool mouse_jiggle_direction = false;
+static const uint16_t mouse_jiggle_frequency = 5000;
+static uint16_t mouse_jiggle_timer = 0;
+
 layer_state_t layer_state_set_user(layer_state_t state) {
   return update_tri_layer_state(state, _LOWER, _RAISE, _CONFIG);
 }
@@ -94,6 +100,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     case COLEMAK:
       if (record->event.pressed) {
         set_single_persistent_default_layer(_COLEMAK);
+      }
+      return false;
+    case M_JIGL:
+      if (record->event.pressed) {
+        is_mouse_jiggle_active = !is_mouse_jiggle_active;
       }
       return false;
     case VOMIT:
@@ -114,6 +125,20 @@ void keyboard_post_init_user(void) {
 #ifdef RGB_MATRIX_ENABLE
   rgb_matrix_disable_noeeprom();
 #endif
+}
+
+void matrix_scan_user(void) {
+  if (is_mouse_jiggle_active) {
+    if (timer_elapsed(mouse_jiggle_timer) > mouse_jiggle_frequency) {
+      mouse_jiggle_timer = timer_read();
+      if (mouse_jiggle_direction) {
+        tap_code(MS_LEFT);
+      } else {
+        tap_code(MS_RGHT);
+      }
+      mouse_jiggle_direction = !mouse_jiggle_direction;
+    }
+  }
 }
 
 #ifdef OLED_ENABLE
