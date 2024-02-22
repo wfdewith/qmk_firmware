@@ -30,6 +30,7 @@ enum planck_keycodes {
   QWERTY = SAFE_RANGE,
   COLEMAK,
   DVORAK,
+  M_JIGL,
 };
 
 #define LOWER MO(_LOWER)
@@ -84,11 +85,16 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 [_FN] = LAYOUT_planck_grid(
   KC_NUM,  KC_MPLY, KC_MSTP, KC_MPRV, KC_MNXT, KC_INS,  KC_HOME, KC_PGUP, KC_P7,   KC_P8,   KC_P9,   KC_PSLS,
-  XXXXXXX, XXXXXXX, KC_MUTE, KC_VOLD, KC_VOLU, KC_DEL,  KC_END,  KC_PGDN, KC_P4,   KC_P5,   KC_P6,   KC_PAST,
+  M_JIGL,  XXXXXXX, KC_MUTE, KC_VOLD, KC_VOLU, KC_DEL,  KC_END,  KC_PGDN, KC_P4,   KC_P5,   KC_P6,   KC_PAST,
   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, KC_P1,   KC_P2,   KC_P3,   KC_PMNS,
   XXXXXXX, _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, KC_P0,   KC_PDOT, KC_PENT, KC_PPLS
 )
 };
+
+static bool is_mouse_jiggle_active = false;
+static bool mouse_jiggle_direction = false;
+static const uint16_t mouse_jiggle_frequency = 5000;
+static uint16_t mouse_jiggle_timer = 0;
 
 layer_state_t layer_state_set_user(layer_state_t state) {
   return update_tri_layer_state(state, _LOWER, _RAISE, _CONFIG);
@@ -111,6 +117,29 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         set_single_persistent_default_layer(_DVORAK);
       }
       return false;
+    case M_JIGL:
+      if (record->event.pressed) {
+        is_mouse_jiggle_active = !is_mouse_jiggle_active;
+      }
+      return false;
   }
   return true;
+}
+
+void keyboard_post_init_user(void) {
+  mouse_jiggle_timer = timer_read();
+}
+
+void matrix_scan_user(void) {
+  if (is_mouse_jiggle_active) {
+    if (timer_elapsed(mouse_jiggle_timer) > mouse_jiggle_frequency) {
+      mouse_jiggle_timer = timer_read();
+      if (mouse_jiggle_direction) {
+        tap_code(KC_MS_LEFT);
+      } else {
+        tap_code(KC_MS_RIGHT);
+      }
+      mouse_jiggle_direction = !mouse_jiggle_direction;
+    }
+  }
 }
